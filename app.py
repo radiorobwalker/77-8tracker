@@ -2,6 +2,10 @@ import asyncio
 import datetime
 import streamlit as st
 from lcwc.arcgis import ArcGISClient
+import nest_asyncio
+
+# Apply the nest_asyncio patch
+nest_asyncio.apply()
 
 TRACKED_UNITS = ["77-8", "77-81"]
 
@@ -26,9 +30,7 @@ st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
 st.markdown("This dashboard pulls real-time data from LCWC's ArcGIS system and filters it for units 77-8 and 77-81.")
 
 with st.spinner("Loading incident data..."):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    incidents = loop.run_until_complete(fetch_tracked_incidents())
+    incidents = asyncio.run(fetch_tracked_incidents())
 
 if incidents:
     st.success(f"Found {len(incidents)} active incident(s) involving tracked units.")
