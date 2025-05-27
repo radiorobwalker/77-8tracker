@@ -26,7 +26,9 @@ st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
 st.markdown("This dashboard pulls real-time data from LCWC's ArcGIS system and filters it for units 77-8 and 77-81.")
 
 with st.spinner("Loading incident data..."):
-    incidents = asyncio.run(fetch_tracked_incidents())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    incidents = loop.run_until_complete(fetch_tracked_incidents())
 
 if incidents:
     st.success(f"Found {len(incidents)} active incident(s) involving tracked units.")
@@ -35,4 +37,3 @@ else:
     st.info("No active incidents involving 77-8 or 77-81 right now.")
 
 st.caption("Powered by [LCWC ArcGIS Data](https://www.lcwc911.us)")
-
