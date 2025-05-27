@@ -1,24 +1,21 @@
 import streamlit as st
 import feedparser
 from datetime import datetime
-import time
+from streamlit_autorefresh import st_autorefresh
+
+# Auto-refresh every 60 seconds
+st_autorefresh(interval=60 * 1000, key="refresh")
+
+# Page settings
+st.set_page_config(page_title="77-8 / 77-81 Tracker", layout="wide")
+st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
+st.markdown("This dashboard shows the last 5 incidents involving 77-8 or 77-81. It refreshes every minute.")
 
 # Constants
 TRACKED_UNITS = ["77-8", "77-81"]
 RSS_FEED_URL = "https://www.lcwc911.us/live-incident-list/rss"
 
-# Set page config
-st.set_page_config(page_title="77-8 / 77-81 Tracker", layout="wide")
-
-# Auto-refresh every 60 seconds
-st.experimental_set_query_params(refresh=str(time.time()))
-st.experimental_rerun()
-
-# Page title
-st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
-st.markdown("This dashboard shows the last 5 incidents involving 77-8 or 77-81. It refreshes every minute.")
-
-# Fetch and filter incidents
+# Function to fetch incidents
 def fetch_tracked_incidents():
     feed = feedparser.parse(RSS_FEED_URL)
     results = []
@@ -47,11 +44,10 @@ def fetch_tracked_incidents():
 
     return results[:5]
 
-# Load data
+# Display data
 with st.spinner("Getting incident data..."):
     incidents = fetch_tracked_incidents()
 
-# Display
 if incidents:
     st.success(f"Showing the last {len(incidents)} calls for tracked units.")
     st.table(incidents)
