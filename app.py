@@ -1,41 +1,45 @@
-import asyncio
-import datetime
 import streamlit as st
-from lcwc.arcgis import ArcGISClient
-import nest_asyncio
+import feedparser
+from datetime import datetime
 
-# Apply the nest_asyncio patch
-nest_asyncio.apply()
+# RSS feed URL
+RSS_URL = "https://www.lcwc911.us/live-incident-list/rss"
 
+# Units to track
 TRACKED_UNITS = ["77-8", "77-81"]
 
-async def fetch_tracked_incidents():
-    client = ArcGISClient()
-    incidents = await client.get_incidents()
+def fetch_incidents():
+    feed = feedparser.parse(RSS_URL)
+    incidents = []
+    for entry in feed.entries:
+        title = entry.title
+        description = entry.description
+        pub_date = entry.published
+        for unit in TRACKED_UNITS:
+            if unit in description:
+                incidents.append({
+                    "Title": title,
+                    "Description": description,
+                    "Published": pub_date
+                })
+                break
+    return incidents
 
-    filtered = []
-    for inc in incidents:
-        if any(unit in (inc.units or "") for unit in TRACKED_UNITS):
-            filtered.append({
-                "Date": inc.date.strftime("%Y-%m-%d %H:%M"),
-                "Location": inc.location,
-                "Type": inc.description,
-                "Units": inc.units
-            })
-    return filtered
-
-# Streamlit UI
 st.set_page_config(page_title="77-8 / 77-81 Live Tracker", layout="wide")
 st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
-st.markdown("This dashboard pulls real-time data from LCWC's ArcGIS system and filters it for units 77-8 and 77-81.")
+st.markdown("This dashboard pulls real-time data from LCWC's RSS feed and filters it for units 77-8 and 77-81.")
 
 with st.spinner("Loading incident data..."):
-    incidents = asyncio.run(fetch_tracked_incidents())
+    incidents = fetch_incidents()
 
 if incidents:
     st.success(f"Found {len(incidents)} active incident(s) involving tracked units.")
-    st.dataframe(incidents, use_container_width=True)
+    for incident in incidents:
+        st.subheader(incident["Title"])
+        st.write(f"**Published:** {incident['Published']}")
+        st.write(f"**Description:** {incident['Description']}")
+        st.markdown("---")
 else:
     st.info("No active incidents involving 77-8 or 77-81 right now.")
 
-st.caption("Powered by [LCWC ArcGIS Data](https://www.lcwc911.us)")
+st.caption("Powered by [LCWC RSS Feed](https://www.lcwc911.us/live-incident-list)")
