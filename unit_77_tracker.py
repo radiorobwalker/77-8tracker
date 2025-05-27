@@ -1,36 +1,68 @@
-# unit_77_dashboard.py
-# Streamlit dashboard to view incidents involving 77-8 and 77-81
-
-import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
-import os
+import datetime
+import streamlit as st
 
-DATA_FILE = "unit_77_incidents.csv"
+# Configuration
+TARGET_UNITS = ["77-8", "77-81"]
+LCWC_URL = "https://www.lcwc911.us/live-incident-list"
 
-st.set_page_config(page_title="Unit 77 Tracker", layout="wide")
+# Function: Fetch Incident Data
+def fetch_incident_data():
+    try:
+        response = requests.get(LCWC_URL)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        st.error(f"Failed to fetch data: {e}")
+        return pd.DataFrame()
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table', class_='views-table')
+    if not table:
+        st.warning("Incident table not found.")
+        return pd.DataFrame()
+
+    incidents = []
+    rows = table.find_all('tr')[1:]  # Skip header
+
+    for row in rows:
+        cells = row.find_all('td')
+        if len(cells) < 5:
+            continue
+
+        date_time = cells[0].get_text(strip=True)
+        nature = cells[1].get_text(strip=True)
+        location = cells[2].get_text(strip=True)
+        municipality = cells[3].get_text(strip=True)
+        units = cells[4].get_text(strip=True)
+
+        for unit in TARGET_UNITS:
+            if unit in units:
+                incidents.append({
+                    "Checked At": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Date/Time": date_time,
+                    "Type": nature,
+                    "Location": location,
+                    "Municipality": municipality,
+                    "Units": units
+                })
+                break
+
+    return pd.DataFrame(incidents)
+
+# Streamlit App
+st.set_page_config(page_title="77-8 and 77-81 Tracker", layout="wide")
 st.title("🚑 Unit 77-8 and 77-81 Activity Tracker")
 
-# Load data
-if os.path.exists(DATA_FILE):
-    df = pd.read_csv(DATA_FILE)
-    df["Date/Time"] = pd.to_datetime(df["Date/Time"], errors='coerce')
-    df["Timestamp Checked"] = pd.to_datetime(df["Timestamp Checked"], errors='coerce')
+st.markdown("This dashboard checks the LCWC live feed for incidents involving units 77-8 and 77-81. Refresh the page to update.")
 
-    # Sort by latest incident first
-    df.sort_values(by=["Date/Time"], ascending=False, inplace=True)
+df = fetch_incident_data()
 
-    # Display metrics
-    st.markdown(f"### Total Incidents Logged: {len(df)}")
+if not df.empty:
+    st.success(f"Found {len(df)} active incident(s) involving tracked units.")
     st.dataframe(df, use_container_width=True)
-
-    # Filter by unit if needed
-    unit_filter = st.selectbox("Filter by Unit", options=["All"] + list(set(
-        u for units in df["Units"] for u in units.split(','))))
-
-    if unit_filter != "All":
-        df_filtered = df[df["Units"].str.contains(unit_filter)]
-        st.dataframe(df_filtered, use_container_width=True)
-
 else:
-    st.warning("No data file found. Run the tracking script first to collect data.")
+    st.info("No active incidents involving 77-8 or 77-81 right now.")
 
+st.caption("Live source: [lcwc911.us](https://www.lcwc911.us/live-incident-list)")
