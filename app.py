@@ -1,45 +1,59 @@
 import streamlit as st
 import feedparser
 from datetime import datetime
+import time
 
-# RSS feed URL
-RSS_URL = "https://www.lcwc911.us/live-incident-list/rss"
-
-# Units to track
+# Constants
 TRACKED_UNITS = ["77-8", "77-81"]
+RSS_FEED_URL = "https://www.lcwc911.us/live-incident-list/rss"
 
-def fetch_incidents():
-    feed = feedparser.parse(RSS_URL)
-    incidents = []
+# Set auto-refresh
+st.set_page_config(page_title="77-8 / 77-81 Tracker", layout="wide)
+countdown = 60
+st_autorefresh = st.experimental_rerun if countdown == 0 else time.sleep(1)
+
+# Page title
+st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
+st.markdown("This dashboard shows the last 5 incidents involving 77-8 or 77-81. It refreshes every minute.")
+
+# Fetch and filter incidents
+def fetch_tracked_incidents():
+    feed = feedparser.parse(RSS_FEED_URL)
+    results = []
+
     for entry in feed.entries:
-        title = entry.title
-        description = entry.description
-        pub_date = entry.published
+        description = entry.get("description", "")
+        title = entry.get("title", "")
+        published = entry.get("published", "")
+        municipality = "Unknown"
+
+        if "Municipality:" in description:
+            try:
+                municipality = description.split("Municipality:")[1].split("<")[0].strip()
+            except:
+                pass
+
         for unit in TRACKED_UNITS:
             if unit in description:
-                incidents.append({
-                    "Title": title,
-                    "Description": description,
-                    "Published": pub_date
+                results.append({
+                    "Unit(s)": unit,
+                    "Call Type": title,
+                    "Municipality": municipality,
+                    "Dispatched": published
                 })
                 break
-    return incidents
 
-st.set_page_config(page_title="77-8 / 77-81 Live Tracker", layout="wide")
-st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
-st.markdown("This dashboard pulls real-time data from LCWC's RSS feed and filters it for units 77-8 and 77-81.")
+    return results[:5]
 
-with st.spinner("Loading incident data..."):
-    incidents = fetch_incidents()
+# Load data
+with st.spinner("Getting incident data..."):
+    incidents = fetch_tracked_incidents()
 
+# Display
 if incidents:
-    st.success(f"Found {len(incidents)} active incident(s) involving tracked units.")
-    for incident in incidents:
-        st.subheader(incident["Title"])
-        st.write(f"**Published:** {incident['Published']}")
-        st.write(f"**Description:** {incident['Description']}")
-        st.markdown("---")
+    st.success(f"Displaying the last {len(incidents)} incidents involving tracked units.")
+    st.table(incidents)
 else:
-    st.info("No active incidents involving 77-8 or 77-81 right now.")
+    st.info("No recent incidents involving 77-8 or 77-81 found.")
 
-st.caption("Powered by [LCWC RSS Feed](https://www.lcwc911.us/live-incident-list)")
+st.caption("Data provided by LCWC via RSS. Clear times are not included in the RSS feed.")
