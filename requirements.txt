@@ -1,3 +1,4 @@
 streamlit
 lcwc
 pydantic
+nest_asyncio
