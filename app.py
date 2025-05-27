@@ -7,10 +7,12 @@ import time
 TRACKED_UNITS = ["77-8", "77-81"]
 RSS_FEED_URL = "https://www.lcwc911.us/live-incident-list/rss"
 
-# Set auto-refresh
-st.set_page_config(page_title="77-8 / 77-81 Tracker", layout="wide)
-countdown = 60
-st_autorefresh = st.experimental_rerun if countdown == 0 else time.sleep(1)
+# Set page config
+st.set_page_config(page_title="77-8 / 77-81 Tracker", layout="wide")
+
+# Auto-refresh every 60 seconds
+st.experimental_set_query_params(refresh=str(time.time()))
+st.experimental_rerun()
 
 # Page title
 st.title("🚑 Live Incident Tracker for Units 77-8 and 77-81")
@@ -36,7 +38,7 @@ def fetch_tracked_incidents():
         for unit in TRACKED_UNITS:
             if unit in description:
                 results.append({
-                    "Unit(s)": unit,
+                    "Unit": unit,
                     "Call Type": title,
                     "Municipality": municipality,
                     "Dispatched": published
@@ -51,9 +53,9 @@ with st.spinner("Getting incident data..."):
 
 # Display
 if incidents:
-    st.success(f"Displaying the last {len(incidents)} incidents involving tracked units.")
+    st.success(f"Showing the last {len(incidents)} calls for tracked units.")
     st.table(incidents)
 else:
     st.info("No recent incidents involving 77-8 or 77-81 found.")
 
-st.caption("Data provided by LCWC via RSS. Clear times are not included in the RSS feed.")
+st.caption("Data source: LCWC RSS Feed – does not include cleared times.")
